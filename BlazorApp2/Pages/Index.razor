@@ -1,0 +1,91 @@
+﻿@using System.Net.Http;
+@using Newtonsoft.Json;
+@using System.Text;
+@using System.Net.Http.Headers;
+@using System;
+@using System.Text.RegularExpressions;
+@inject HttpClient Http;
+@page "/"
+
+<PageTitle>English Card</PageTitle>
+
+<h1>English Card</h1>
+
+
+<button @onclick="GenerateInstagramPost">Find ten words</button>
+
+<h3>Words</h3>
+<p style="width: 400px; padding: 30px; background-color: #ccc; margin-top: 20px;">@response</p>
+<p style="width: 400px; padding: 30px; background-color: #ccc; margin-top: 20px;">@sentence</p>
+<button @onclick="Searchword">Other Word</button>
+@code {
+    int or = 0;
+    int hd = 0;
+    string english;
+    string turkish;
+    string topic = "";
+    string sentence = "";
+    string response = "";
+    Dictionary<string, string> values;
+    int hold = 0;
+    bool kontrol = true;
+    string desen = @"[\w'123456789]+";
+    List<string> kelimeler = new List<string>();
+    private async Task GenerateInstagramPost()
+    {
+
+        var apiKey = "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";
+        if (hold == 0)
+            Http.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+        hold++;
+        var jsonContent = new
+        {
+            prompt = "Give me 10 B2 level English words and translate them into Turkish. In json format",
+            model = "text-davinci-003",
+            max_tokens = 1000,
+        };
+
+        var responseContent = await Http.PostAsync("https://api.openai.com/v1/completions", new StringContent(JsonConvert.SerializeObject(jsonContent), Encoding.UTF8, "application/json"));
+
+        var resContext = await responseContent.Content.ReadAsStringAsync();
+        var data = JsonConvert.DeserializeObject<dynamic>(resContext);
+
+        response = data.choices[0].text;
+        values = JsonConvert.DeserializeObject<Dictionary<string,string>>(response.ToString());
+        // var eslesmeler = Regex.Matches(response, desen);
+        // // Bulunan kelimeleri listeye ekleyin
+        // foreach (Match eslesme in eslesmeler)
+        // {
+        //     kelimeler.Add(eslesme.Value);
+        // }
+
+
+    }
+    public async Task Searchword()
+    {
+
+        if (kontrol)
+        {
+
+            response = values.Keys.ElementAt(or);
+            kontrol = false;
+            var jsonContent = new
+            {
+                prompt = "Give me a sentence with the word " + response,
+                model = "text-davinci-003",
+                max_tokens = 1000
+            };
+            var responseContent = await Http.PostAsync("https://api.openai.com/v1/completions", new StringContent(JsonConvert.SerializeObject(jsonContent), Encoding.UTF8, "application/json"));
+
+            var resContext = await responseContent.Content.ReadAsStringAsync();
+            var data = JsonConvert.DeserializeObject<dynamic>(resContext);
+            sentence=data.choices[0].text;
+        }
+        else
+        {
+            kontrol = true;
+            response = values.Values.ElementAt(or);
+            or++;
+        }
+    }
+}
