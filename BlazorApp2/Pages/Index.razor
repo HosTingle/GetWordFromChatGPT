@@ -4,11 +4,23 @@
 @using System.Net.Http.Headers;
 @using System;
 @using System.Text.RegularExpressions;
+
 @inject HttpClient Http;
 @page "/"
 
 <PageTitle>English Card</PageTitle>
-
+<select @bind="pa">
+    @foreach (var le in level)
+    {
+        <option>@le</option>
+    }
+</select>
+<select @bind="pap">
+    @foreach (var sasqe in about)
+    {
+        <option>@sasqe</option>
+    }
+</select>
 <h1>English Card</h1>
 
 
@@ -19,73 +31,173 @@
 <p style="width: 400px; padding: 30px; background-color: #ccc; margin-top: 20px;">@sentence</p>
 <button @onclick="Searchword">Other Word</button>
 @code {
+    int patlama;
+    int bitti = 0;
+    int say = 0;
+    int tay = 0;
+    string pa;
+    string pap;
     int or = 0;
     int hd = 0;
     string english;
     string turkish;
-    string topic = "";
+    string sentencethen = "";
     string sentence = "";
     string response = "";
-    Dictionary<string, string> values;
+    string sa = "";
+    string ka = "";
+    string kapa = "";
+    string kapaz = "";
+    Dictionary<string, string>? values;
+    Dictionary<string, string>? sen;
     int hold = 0;
     bool kontrol = true;
     string desen = @"[\w'123456789]+";
     List<string> kelimeler = new List<string>();
+    List<string> kelimeturing = new List<string>();
+    List<string> cumleler = new List<string>();
+    List<string> level = new List<string>
+{
+    "A1",
+    "A2",
+    "B1",
+    "B2",
+    "C1",
+    "C2"
+};
+    List<string> about = new List<string>
+{
+    "about astrophysics",
+    "about school",
+    "about science",
+    "about computer",
+    "about vocation",
+    "about game term "
+};
     private async Task GenerateInstagramPost()
     {
+        patlama = 0;
+        say++;
+        if (say % 3 == 0)
+        {
+            Thread.Sleep(30000);
+        }
+        bitti = 0;
+        or = 0;
+        kelimeler.Clear();
+        cumleler.Clear();
+        kontrol = true;
+        var apiKey = "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";
 
-        var apiKey = "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";
         if (hold == 0)
             Http.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
         hold++;
+        string safsa = "Give me random 10 " + pa + " level english words " + pap + @" and translate them turkish, in json format. Sample format={""English Word"":""Turkish Word"",""English Word"":""Turkish Word""}";
         var jsonContent = new
         {
-            prompt = "Give me 10 B2 level English words and translate them into Turkish. In json format",
-            model = "text-davinci-003",
-            max_tokens = 1000,
+            prompt = safsa,
+            model = "gpt-3.5-turbo-instruct",
+            max_tokens = 4000,
         };
-
         var responseContent = await Http.PostAsync("https://api.openai.com/v1/completions", new StringContent(JsonConvert.SerializeObject(jsonContent), Encoding.UTF8, "application/json"));
-
         var resContext = await responseContent.Content.ReadAsStringAsync();
         var data = JsonConvert.DeserializeObject<dynamic>(resContext);
-
         response = data.choices[0].text;
-        values = JsonConvert.DeserializeObject<Dictionary<string,string>>(response.ToString());
-        // var eslesmeler = Regex.Matches(response, desen);
-        // // Bulunan kelimeleri listeye ekleyin
-        // foreach (Match eslesme in eslesmeler)
-        // {
-        //     kelimeler.Add(eslesme.Value);
-        // }
+        string result = Regex.Replace(response, @"\.", "");
+        System.Diagnostics.Debug.WriteLine(result);
+        try
+        {
 
+            values = JsonConvert.DeserializeObject<Dictionary<string, string>>(result);
+        }
+        catch
+        {
+            GenerateInstagramPost();
+            patlama++;
+
+        }
+        if (patlama == 0)
+        {
+            foreach (string sa in values.Keys)
+            {
+                string kapa = Regex.Replace(sa, @"[\d\p{P}]", "");
+                kelimeler.Add(kapa);
+            }
+            ka = "For every word I give you, just give me one short sentence,move to new line in each sentence." + string.Join(",", kelimeler);
+            jsonContent = new
+            {
+                prompt = ka,
+                model = "gpt-3.5-turbo-instruct",
+                max_tokens = 4000,
+            };
+            say++;
+            if (say % 3 == 0)
+            {
+                Thread.Sleep(30000);
+            }
+            responseContent = await Http.PostAsync("https://api.openai.com/v1/completions", new StringContent(JsonConvert.SerializeObject(jsonContent), Encoding.UTF8, "application/json"));
+            resContext = await responseContent.Content.ReadAsStringAsync();
+            var mata = JsonConvert.DeserializeObject<dynamic>(resContext);
+            sentencethen = mata.choices[0].text;
+            string temizMetin = Regex.Replace(sentencethen, @"[\d\p{P}]", "");
+            List<string> sentences = new List<string>(temizMetin.Split('\n'));
+            if (sentences.Count() < 9)
+            {
+                List<string> sentencest = new List<string>(temizMetin.Split('.'));
+                sentences = sentencest;
+            }
+
+            // Şimdi "sentences" adlı List<string> koleksiyonunda tüm cümlelere erişebilirsiniz.
+            foreach (string sentence in sentences)
+            {
+                if (sentence != "")
+                    cumleler.Add(sentence);
+            }
+            if (cumleler.Count != 10)
+            {
+                while (cumleler.Count <= 10)
+                {
+                    cumleler.Add("");
+                }
+            }
+
+            sentence = sentencethen;
+            // var eslesmeler = Regex.Matches(response, desen);
+            // // Bulunan kelimeleri listeye ekleyin
+            // foreach (Match eslesme in eslesmeler)
+            // {
+            //     kelimeler.Add(eslesme.Value);
+            // }
+        }
 
     }
     public async Task Searchword()
     {
-
-        if (kontrol)
+        bitti++;
+        if (bitti >= 21)
         {
-
-            response = values.Keys.ElementAt(or);
-            kontrol = false;
-            var jsonContent = new
-            {
-                prompt = "Give me a sentence with the word " + response,
-                model = "text-davinci-003",
-                max_tokens = 1000
-            };
-            var responseContent = await Http.PostAsync("https://api.openai.com/v1/completions", new StringContent(JsonConvert.SerializeObject(jsonContent), Encoding.UTF8, "application/json"));
-
-            var resContext = await responseContent.Content.ReadAsStringAsync();
-            var data = JsonConvert.DeserializeObject<dynamic>(resContext);
-            sentence=data.choices[0].text;
+            response = "Kelimeler bitti, yeni kelimeler talep edebilirsiniz";
+            sentence = "";
         }
         else
         {
-            kontrol = true;
-            response = values.Values.ElementAt(or);
-            or++;
+            if (kontrol)
+            {
+                
+                response = values.Keys.ElementAt(or);
+                response = Regex.Replace(response, @"[\d\p{P}]", "");
+                kontrol = false;
+
+                sentence = cumleler[or];
+            }
+            else
+            {
+                kontrol = true;
+                response = values.Values.ElementAt(or);
+                response = Regex.Replace(response, @"[\d\p{P}]", "");
+                or++;
+            }
         }
+       
     }
 }
